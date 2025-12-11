@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor 3D Ajustable</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body{margin:0;background:#111;overflow:hidden;touch-action:none;font-family:sans-serif;}
+#topBar{position:fixed;top:0;left:0;width:100%;height:55px;background:#222;display:flex;align-items:center;padding:0 10px;z-index:20;box-shadow:0 2px 5px #000;}
+#btnAdd,#btnOutliner,#btnRender,#btnToggleTopBar{background:#333;color:#fff;padding:8px 12px;border-radius:6px;border:none;font-size:16px;cursor:pointer;margin-right:6px;}
+#threeCanvas {
+    touch-action: auto !important;
+}
+
+#addMenu{position:fixed;top:55px;left:10px;background:#222;padding:10px;border-radius:5px;display:none;z-index:30;max-height:70vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#addMenu button{display:block;width:150px;margin-bottom:6px;background:#444;color:white;padding:6px;border-radius:5px;border:none;cursor:pointer;}
+#rightPanel{position:fixed;top:55px;right:-260px;width:260px;height:calc(100vh - 55px);background:#222;border-left:2px solid #333;padding:10px;transition:right .3s;z-index:20;color:white;overflow-y:auto;-webkit-overflow-scrolling: touch;}
+#toggleRight{position:fixed;top:60px;right:0;width:35px;height:40px;background:#444;color:white;display:flex;align-items:center;justify-content:center;border-top-left-radius:10px;border-bottom-left-radius:10px;z-index:30;cursor:pointer;}
+#sceneContainer {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+}
+
+#renderArea {
+    width:100%;
+    height:100%;
+    border-radius:0;
+}
+
+#threeCanvas{width:100%;height:100%;display:block;}
+.transformBtnContainer{position:fixed;bottom:10px;left:10px;display:flex;gap:6px;z-index:25;}
+.transformBtn{width:40px;height:40px;background:#444;color:white;border:none;border-radius:6px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#outliner{position:fixed;top:55px;left:-220px;width:200px;height:calc(100vh - 55px);background:#222;padding:10px;transition:left .3s;z-index:20;color:white;overflow-y:auto;-webkit-overflow-scrolling: touch;}
+.outliner-item{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+
+.outliner-item span{flex:1;}
+.actionPanel{display:none;flex-direction:column;background:#333;padding:5px;border-radius:5px;margin-top:2px;}
+.actionPanel button{margin:2px 0;background:#555;color:white;border:none;border-radius:3px;font-size:12px;padding:2px 4px;cursor:pointer;}
+#joystickContainer {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 120px;
+  height: 120px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+  touch-action: none;
+  display: none;
+  z-index: 100;
+}
+#joystickThumb {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 50%;
+  top: 35px;
+  left: 35px;
+}
+#btnPlay {
+  padding: 7px 10px;          /* Tamaño cómodo del botón */
+  font-size: 18px;             /* Texto legible */
+  font-weight: bold;           /* Destacar el texto */
+  color: #fff;                 /* Color del texto */
+  background: linear-gradient(45deg, #0EFF00, #02AE07); /* Degradado llamativo */
+  border: none;                /* Sin borde predeterminado */
+  border-radius: 10px;         /* Bordes redondeados */
+  cursor: pointer;             /* Cambia el cursor al pasar encima */
+  transition: all 0.3s ease;   /* Animación suave para hover */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Sombra sutil */
+}
+
+#btnPlay:hover {
+  transform: scale(1.05);      /* Efecto de "agrandar" al pasar el mouse */
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3); /* Sombra más intensa */
+}
+
+#btnPlay:active {
+  transform: scale(0.98);      /* Presión del botón */
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+#btnEdit {
+    display: none;
+  position: fixed;          /* Siempre fijo en pantalla */
+  top: 10px;                /* Separación del borde superior */
+  left: 10px;               /* Separación del borde izquierdo */
+
+  padding: 6px 14px;        /* Tamaño */
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+
+  background-color: #f0f0f0;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+            /* Asegura que esté encima de todo */
+}
+
+#btnEdit:hover {
+  background-color: #e0e0e0;        /* Cambio de fondo al pasar mouse */
+  border-color: #999;               /* Borde un poco más oscuro */
+}
+
+#btnEdit:active {
+  transform: scale(0.95);           /* Efecto de presionar */
+}
+
+/* Estilo base para ambos botones */
+#btnJump, #btnRun {
+    position: fixed;
+    bottom: 20px;
+    z-index: 100;
+    display: none; /* Se muestra mediante JS cuando sea necesario */
+    padding: 15px 25px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(145deg, #ff7f50, #ff4500);
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    user-select: none;
+}
+
+/* Diferenciar botones con colores */
+#btnJump {
+    right: 80px;
+    background: linear-gradient(145deg, #1e90ff, #00bfff); /* azul */
+}
+
+#btnRun {
+    right: 20px;
+    background: linear-gradient(145deg, #32cd32, #228b22); /* verde */
+}
+
+/* Efecto al presionar */
+#btnJump:active, #btnRun:active {
+    transform: scale(0.9);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+
+/* Efecto al pasar el cursor (opcional para PC) */
+#btnJump:hover, #btnRun:hover {
+    filter: brightness(1.1);
+}
+
+
+.gcBtn {
+    background:#333; color:white; border:none;
+    padding:6px; border-radius:6px; cursor:pointer;
+}
+
+.codePanel {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 500px;
+    height: 60vh;
+    background: #111;
+    border: 2px solid #444;
+    border-radius: 10px;
+    padding: 10px;
+    z-index: 60;
+    display: none;
+    /* ← SOLO ESTO */
+    flex-direction: column;
+}
+.codeClose {
+    position:absolute;
+    top:8px;
+    right:10px;
+    font-size:22px;
+    color:#ff4c4c;
+    cursor:pointer;
+    font-weight:bold;
+    user-select:none;
+    padding:2px 8px;
+    border-radius:5px;
+    transition:0.2s;
+}
+
+.codeClose:hover {
+    background:#331111;
+    color:#ff7777;
+}
+
+.codePanel textarea {
+    flex:1; width:100%; background:#000; border:none;
+    border-radius:8px; padding:10px; resize:none;
+    font-family:monospace; font-size:14px; outline:none;
+}
+
+/* COLORES ESPECIALES */
+#htmlCode { color:#006400; }   /* Verde oscuro */
+#cssCode  { color:#00e5ff; }   /* Celeste */
+#jsCode   { color:#b200ff; }   /* Morado */
+#animateCode { color:#ffe600; } /* Amarillo */
+
+.codePanel button {
+    margin-top:6px; padding:8px; border:none;
+    border-radius:6px; cursor:pointer;
+    background:#333; color:white;
+}
+
+#btnGameCode {
+    background:#333;
+    color:#fff;
+    padding:8px 12px;
+    border-radius:6px;
+    border:none;
+    font-size:16px;
+    cursor:pointer;
+    margin: 5px;
+    margin-left:10px;
+}
+
+#renderSettings{position:fixed;top:60px;left:50%;transform:translateX(-50%);width:300px;background:#222;padding:10px;border-radius:10px;z-index:40;display:none;flex-direction:column;gap:10px;box-shadow:0 3px 10px #000;color:white;}
+#renderSettings label{display:flex;justify-content:space-between;align-items:center;}
+#renderSettings input[type=range]{width:150px;}
+#renderSettings button{background:#444;color:white;border:none;border-radius:6px;padding:6px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="topBar">
+
+
+  <button id="btnPlay">Play</button>
+  <!-- BOTÓN GAMECODE -->
+<button id="btnGameCode">GameCode</button>
+
+<!-- MENÚ GAMECODE -->
+<div id="gamecodeMenu" style="
+    position:fixed; top:55px; right:10px; z-index:50;
+    background:#222; padding:10px; border-radius:10px;
+    display:none; flex-direction:column; gap:6px; width:140px;
+">
+    <button class="gcBtn" data-panel="htmlPanel">HTML</button>
+    <button class="gcBtn" data-panel="cssPanel">CSS</button>
+    <button class="gcBtn" data-panel="jsPanel">JS</button>
+    <button class="gcBtn" data-panel="animatePanel">ANIMATE</button>
+</div>
+
+  <button id="btnAdd">Add</button>
+  <button id="btnOutliner">Outliner</button>
+  <button id="btnRender">Render</button>
+</div>
+
+<div id="addMenu">
+  <b style="color:white">Mesh</b>
+  <button onclick="addMesh('cube')">Cube</button>
+  <button onclick="addMesh('sphere')">Sphere</button>
+  <button onclick="addMesh('cylinder')">Cylinder</button>
+  <button onclick="addMesh('plane')">Plane</button>
+  <button onclick="addMesh('capsule')">Capsule</button>
+  <button onclick="addMesh('cone')">Cone</button>
+  <button onclick="addMesh('pyramid')">Pyramid</button>
+  <button onclick="addMesh('torus')">Torus</button>
+  <b style="color:white">Import</b>
+  <button onclick="inputGLTF.click()">Import GLTF</button>
+</div>
+
+<input id="inputGLTF" type="file" accept=".gltf,.glb" style="display:none">
+
+<div id="toggleRight">≡</div>
+<div id="rightPanel"><h3>Panel</h3><p>Propiedades aparecerán aquí</p>
+
+<!-- Dentro del rightPanel agregamos sección de Script -->
+
+<div id="scriptSection" style="margin-top:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Script</span>
+        <button id="btnHelpScript" title="Ejemplos" style="background:#555;color:white;border:none;border-radius:3px;padding:0 4px;cursor:pointer;">?</button>
+    </div>
+    <textarea id="objScript" style="width:100%;height:120px;background:#333;color:white;border:none;border-radius:5px;padding:5px;resize:none;margin-top:5px;"></textarea>
+    <div style="display:flex;gap:6px;margin-top:5px;">
+        <button id="applyScript" style="flex:1;background:#444;color:white;border:none;border-radius:5px;padding:5px;cursor:pointer;">Aplicar JS</button>
+        <button id="clearScript" style="flex:1;background:#444;color:white;border:none;border-radius:5px;padding:5px;cursor:pointer;">Borrar JS</button>
+    </div>
+</div>
+
+
+
+
+</div>
+
+<div id="outliner"></div>
+
+<div id="sceneContainer">
+  <div id="renderArea">
+    <canvas id="threeCanvas"></canvas>
+  </div>
+</div>
+
+<div class="transformBtnContainer">
+  <button class="transformBtn" id="moveBtn"><i class="fas fa-arrows-alt"></i></button>
+  <button class="transformBtn" id="rotateBtn"><i class="fas fa-redo"></i></button>
+  <button class="transformBtn" id="scaleBtn"><i class="fas fa-expand-arrows-alt"></i></button>
+  <button id="btnToggleTopBar"><i class="fas fa-arrows-alt-v"></i></button>
+</div>
+<!-- PANEL HTML -->
+<div id="htmlPanel" class="codePanel">
+    <div class="codeClose" onclick="closeCodePanels()">✕</div>
+    <textarea id="htmlCode" placeholder="Código HTML..."></textarea>
+    <button onclick="applyHTML()">Aplicar cambios</button>
+<button onclick="eraseAllFromPanel()">Borrar todo</button>
+
+</div>
+
+<!-- PANEL CSS -->
+<div id="cssPanel" class="codePanel">
+    <div class="codeClose" onclick="closeCodePanels()">✕</div>
+    <textarea id="cssCode" placeholder="Código CSS..."></textarea>
+    <button onclick="applyCSS()">Aplicar cambios</button>
+    <button onclick="cssCode.value=''">Borrar todo</button>
+</div>
+
+<!-- PANEL JS -->
+<div id="jsPanel" class="codePanel">
+    <div class="codeClose" onclick="closeCodePanels()">✕</div>
+    <textarea id="jsCode" placeholder="Código JS..."></textarea>
+    <button onclick="applyJS()">Aplicar JS</button>
+    <button onclick="jsCode.value=''">Borrar todo</button>
+</div>
+
+<!-- PANEL ANIMATE -->
+<div id="animatePanel" class="codePanel">
+    <div class="codeClose" onclick="closeCodePanels()">✕</div>
+    <textarea id="animateCode" placeholder="Código dentro del animate()..."></textarea>
+    <button onclick="applyAnimate()">Aplicar cambios</button>
+    <button onclick="animateCode.value=''">Borrar todo</button>
+</div>
+
+
+<div id="renderSettings">
+  <label>Proporción:
+    <select id="ratioSelect">
+       <option value="full:full">Full:Full</option>
+      <option value="full:full">1:1</option>
+      <option value="full:full">1:3</option>
+      <option value="full:full">3:1</option>
+     
+    </select>
+  </label>
+  <label>Tamaño: <span id="sizeVal">90%</span>
+    <input type="range" id="sizeSlider" min="10" max="100" value="90">
+  </label>
+  <button id="applyRender">Aplicar</button>
+  <button id="closeRender">Cerrar</button>
+</div>
+<!-- Joystick -->
+<div id="joystickContainer">
+  <div id="joystickThumb"></div>
+</div>
+
+
+<!-- Botones de jugador (Jump y Run) -->
+<button id="btnJump">
+    Jump
+</button>
+<button id="btnEdit">Edit</button>
+<button id="btnRun" >
+    Run
+</button>
+
+
+<script>
+// Guarda lo que agregamos desde cada panel
+let addedHTML = [];
+let addedCSS = [];
+let addedJS = [];
+let userAnimateCode = "";
+
+/* ABRIR/CERRAR MENÚ GAMECODE */
+const gameBtn = document.getElementById("btnGameCode");
+const gameMenu = document.getElementById("gamecodeMenu");
+
+gameBtn.onclick = () => {
+    gameMenu.style.display = 
+    gameMenu.style.display==="none" ? "flex" : "none";
+
+};
+
+/* ABRIR PANEL CORRESPONDIENTE */
+document.querySelectorAll(".gcBtn").forEach(btn=>{
+    btn.onclick = () => {
+        const p = document.getElementById(btn.dataset.panel);
+        document.querySelectorAll(".codePanel").forEach(x => x.style.display="none");
+        p.style.display = "flex";
+    };
+});
+function closeCodePanels(){
+    document.querySelectorAll(".codePanel")
+        .forEach(p => p.style.display = "none");
+}
+
+/* === INJECT HTML === */
+function applyHTML(){
+    const html = htmlCode.value;
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    addedHTML.push(container);
+}
+
+
+/* === INJECT CSS === */
+function applyCSS(){
+    const css = cssCode.value;
+    const style = document.createElement("style");
+    style.innerHTML = css;
+    document.head.appendChild(style);
+    addedCSS.push(style);
+}
+
+/* === INJECT JS === */
+function applyJS(){
+    try {
+        const fn = new Function(jsCode.value);
+        fn();
+        addedJS.push(fn);
+    } catch(err){
+        alert("Error en JS: " + err);
+    }
+}
+
+/* === INJECT DENTRO DE animate() === */
+
+
+function applyAnimate(){
+    userAnimateCode = animateCode.value;
+}
+
+function eraseAllFromPanel(){
+
+    // 1. Eliminar HTML agregado
+    addedHTML.forEach(el => el.remove());
+    addedHTML = [];
+
+    // 2. Eliminar CSS agregado
+    addedCSS.forEach(style => style.remove());
+    addedCSS = [];
+
+    // 3. Resetear JS ejecutado
+    addedJS = [];  // No puede revertir efectos, pero evita reutilizar el código
+
+    // 4. Resetear animate() personalizado
+    userAnimateCode = "";
+    
+    // Vaciar textareas
+    htmlCode.value = "";
+    cssCode.value = "";
+    jsCode.value = "";
+    animateCode.value = "";
+}
+
+/* INTERCEPTAMOS animate() DESDE EL USUARIO */
+function runUserAnimate() {
+    if (userAnimateCode && typeof userAnimateCode === "string") {
+        try {
+            new Function(userAnimateCode)();
+        } catch(err) {
+            console.warn("Error en animate personalizado:", err);
+        }
+    }
+}
+
+</script>
+
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.162.0";
+import { OrbitControls } from "https://esm.sh/three@0.162.0/examples/jsm/controls/OrbitControls.js";
+import { TransformControls } from "https://esm.sh/three@0.162.0/examples/jsm/controls/TransformControls.js";
+import { GLTFLoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/GLTFLoader.js";
+// Cargar textura 360
+const loader360 = new THREE.TextureLoader();
+loader360.load("models/cielo.jpg", texture => {
+texture.mapping = THREE.EquirectangularReflectionMapping; // o EquirectangularRefractionMapping si quieres efecto refractivo
+scene.background = texture;
+});
+
+/* ESCENA */
+const canvas=document.getElementById("threeCanvas");
+const scene=new THREE.Scene();
+const objects=[];
+let selectedObjects=[];
+let terrain = null;
+
+
+const spawnObject = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5),
+    new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+);
+
+// Nombre que saldrá en el Outliner
+spawnObject.name = "spawnPoint";
+
+// Mostrarlo en escena
+spawnObject.visible = true;
+
+// Sombra opcional
+spawnObject.castShadow = false;
+spawnObject.receiveShadow = false;
+
+// === IMPORTANTE ===
+// Permitir que el Raycaster lo seleccione
+spawnObject.userData.collision = false;     // para colisión/selección
+spawnObject.userData.isSelectable = true;  // para Outliner
+spawnObject.userData.ignorePhysics = true; // evita que entre en físicas
+
+// Agregar a la escena
+scene.add(spawnObject);
+
+// Agregar al array usado por el Outliner y el Raycaster
+objects.push(spawnObject);
+
+const loader = new GLTFLoader();
+// Agregarlo como hijo del terreno después del loader:
+loader.load("models/terrain_example.gltf", g => {
+
+    terrain = g.scene;
+    terrain.name = "terrain";
+
+    // YA NO se agrega a objects
+    // objects.push(terrain);
+
+    // YA NO se agrega el terrain a la escena
+    // scene.add(terrain);
+
+    // --- SOLO SPAWN ---
+    // Añadimos el spawn directamente a la escena
+    spawnObject.position.set(0, 10, 0);
+    scene.add(spawnObject);
+
+});
+
+// Cámara de edición (OrbitControls)
+const camEditor = new THREE.PerspectiveCamera(55, canvas.clientWidth/canvas.clientHeight, 0.1, 1000);
+camEditor.position.set(3, 3, 5);
+
+// Cámara de juego (3ra persona)
+const camGame = new THREE.PerspectiveCamera(60, canvas.clientWidth/canvas.clientHeight, 0.1, 200);
+camGame.position.set(0, 2, 8);
+
+// Cámara activa
+
+
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
+
+window.addEventListener("resize",()=>{updateRender();});
+
+/* CONTROLS */
+const orbitControls = new OrbitControls(camEditor, renderer.domElement);
+
+
+orbitControls.enableDamping=true;
+
+const transformControls=new TransformControls(camEditor, renderer.domElement);
+
+scene.add(transformControls);
+transformControls.addEventListener('dragging-changed',e=>{orbitControls.enabled=!e.value;});
+
+/* LUCES */
+scene.add(new THREE.AmbientLight(0xffffff,0.4));
+const dirLight=new THREE.DirectionalLight(0xffffff,1);
+dirLight.position.set(5,5,5); scene.add(dirLight);
+
+/* GRID */
+scene.add(new THREE.GridHelper(20,20,0x444444,0x222222));
+
+/* PANEL DERECHO */
+const rightPanel=document.getElementById("rightPanel");
+const toggleRight=document.getElementById("toggleRight");
+let open=false;
+toggleRight.onclick=()=>{open=!open; rightPanel.style.right=open?"0":"-260px";};
+
+/* MENU ADD */
+const btnAdd=document.getElementById("btnAdd");
+const addMenu=document.getElementById("addMenu");
+btnAdd.onclick=()=>{addMenu.style.display=addMenu.style.display==="block"?"none":"block";};
+
+/* OUTLINER */
+const outliner=document.getElementById("outliner");
+const btnOutliner=document.getElementById("btnOutliner");
+let outlinerOpen=false;
+btnOutliner.onclick=()=>{
+  outlinerOpen=!outlinerOpen;
+  outliner.style.left=outlinerOpen?"0":"-220px";
+  updateOutliner();
+};
+/* RENDER SETTINGS */
+const btnRender=document.getElementById("btnRender");
+const renderSettings=document.getElementById("renderSettings");
+const ratioSelect=document.getElementById("ratioSelect");
+const sizeSlider=document.getElementById("sizeSlider");
+const sizeVal=document.getElementById("sizeVal");
+const applyRender=document.getElementById("applyRender");
+const closeRender=document.getElementById("closeRender");
+const renderArea=document.getElementById("renderArea");
+
+// 🔥 FORZAR SIEMPRE FULL
+document.addEventListener("DOMContentLoaded", () => {
+    if (ratioSelect) {
+        ratioSelect.value = "full:full";      // Siempre estará full
+        ratioSelect.disabled = true;          // Desactivar selección (opcional)
+    }
+});
+
+btnRender.onclick = () => { renderSettings.style.display = "flex"; };
+closeRender.onclick = () => { renderSettings.style.display = "none"; };
+sizeSlider.oninput = () => { sizeVal.innerText = sizeSlider.value + "%"; };
+
+// 🔥 SIEMPRE RENDER FULL
+function updateRender() {
+
+    renderArea.style.width  = "100vw";
+    renderArea.style.height = "100vh";
+
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+
+    // Cámara activa
+    currentCamera.aspect = window.innerWidth / window.innerHeight;
+    currentCamera.updateProjectionMatrix();
+}
+
+applyRender.onclick = () => {
+    updateRender();
+    renderSettings.style.display = "none";
+};
+
+/* RAYCASTER */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let selectedObject = null;
+
+canvas.addEventListener('click', e => {
+
+    // Solo usar raycaster si estamos en modo EDITOR
+    if (currentCamera !== camEditor) return;
+
+    // Solo actuar si no estamos moviendo con transformControls
+    if (!transformControls.dragging) {
+
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // Cámara correcta
+        raycaster.setFromCamera(pointer, camEditor);
+
+        const intersects = raycaster.intersectObjects(objects, true);
+
+        if (intersects.length === 0) {
+            // Click en vacío → deseleccionar
+            selectedObjects = [];
+            transformControls.detach();
+            selectedObject = null;
+            updateOutliner();
+        } else {
+            // Seleccionar
+            selectedObject = intersects[0].object;
+            selectedObjects = [selectedObject];
+            transformControls.attach(selectedObject);
+            updateOutliner();
+        }
+    }
+});
+
+/* FUNCIONES GLOBALES */
+window.addMesh=function(type){
+  let geom;
+  switch(type){
+    case "cube":geom=new THREE.BoxGeometry(1,1,1);break;
+    case "sphere":geom=new THREE.SphereGeometry(.6,32,32);break;
+    case "cylinder":geom=new THREE.CylinderGeometry(.5,.5,1,32);break;
+    case "plane":geom=new THREE.PlaneGeometry(2,2);break;
+    case "capsule":geom=new THREE.CapsuleGeometry(.4,1,8,16);break;
+    case "cone":geom=new THREE.ConeGeometry(.6,1,32);break;
+    case "pyramid":geom=new THREE.ConeGeometry(.8,1,4);break;
+    case "torus":geom=new THREE.TorusGeometry(.6,.2,16,50);break;
+  }
+
+  const mesh=new THREE.Mesh(
+      geom,
+      new THREE.MeshStandardMaterial({color:0xB8B8B8
+})
+  );
+
+  mesh.name = type;
+
+  /** ✔️ HABILITAR COLISIÓN POR DEFECTO **/
+  mesh.userData.collision = true;
+
+  scene.add(mesh);
+  objects.push(mesh);
+
+  fitInView(mesh);
+  updateOutliner();
+};
+
+
+window.inputGLTF=document.getElementById("inputGLTF");
+window.inputGLTF.onchange=e=>{
+  const file=e.target.files[0];
+  const url=URL.createObjectURL(file);
+  loader.load(url, gltf => {
+    const obj = gltf.scene;
+
+    /** ✔️ HABILITAR COLISIÓN POR DEFECTO EN MODELOS GLTF **/
+    obj.userData.collision = true;
+
+    scene.add(obj);
+    objects.push(obj);
+    fitInView(obj);
+    updateOutliner();
+});
+
+};
+let spawnPoint = new THREE.Vector3();
+
+function updateSpawnPoint(){
+    spawnObject.getWorldPosition(spawnPoint);
+}
+
+function placePlayerOnTerrain(){
+    const ray = new THREE.Raycaster(
+        new THREE.Vector3(spawnPoint.x, spawnPoint.y + 200, spawnPoint.z),
+        new THREE.Vector3(0, -1, 0)
+    );
+
+    const hits = ray.intersectObject(terrain, true);
+    if(hits.length > 0){
+        player.position.set(
+            hits[0].point.x,
+            hits[0].point.y + 1,
+            hits[0].point.z
+        );
+    } else {
+        player.position.copy(spawnPoint);
+    }
+}
+
+
+/* FIT OBJECT */
+function fitInView(obj){
+    const box = new THREE.Box3().setFromObject(obj);
+    const size = box.getSize(new THREE.Vector3()).length();
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Usamos solo la cámara del editor
+    orbitControls.target.copy(center);
+
+    const distance = size / Math.sin(camEditor.fov * Math.PI / 360);
+
+    camEditor.position.copy(center).add(new THREE.Vector3(distance, distance, distance));
+    camEditor.lookAt(center);
+
+    camEditor.updateProjectionMatrix();
+}
+
+/* OUTLINER */
+function updateOutliner(){
+  outliner.innerHTML="<h3>Outliner</h3>";
+  objects.forEach((obj)=>{
+    const div=document.createElement("div");
+    div.className="outliner-item";
+    const nameSpan=document.createElement("span");
+    nameSpan.innerHTML=`<i class="fas fa-cube"></i> ${obj.name}`;
+    if(selectedObjects.includes(obj)) nameSpan.style.color="lime";
+    
+    const btnToggle=document.createElement("button"); btnToggle.innerHTML="+";
+    const actionPanel=document.createElement("div"); actionPanel.className="actionPanel";
+
+    const btnSel=document.createElement("button"); btnSel.innerHTML='<i class="fas fa-hand-pointer"></i>'; btnSel.onclick=()=>{selectedObjects=[obj]; transformControls.attach(obj); updateOutliner(); checkGroupButton();};
+    const btnCenter=document.createElement("button"); btnCenter.innerHTML='<i class="fas fa-crosshairs"></i>'; btnCenter.onclick=()=>fitInView(obj);
+    const btnRename=document.createElement("button"); btnRename.innerHTML='<i class="fas fa-i-cursor"></i>'; btnRename.onclick=()=>{const newName=prompt("Nuevo nombre",obj.name); if(newName)obj.name=newName; updateOutliner();};
+    const btnDel=document.createElement("button"); btnDel.innerHTML='<i class="fas fa-trash"></i>'; btnDel.onclick=()=>{
+      scene.remove(obj);
+      const index=objects.indexOf(obj);
+      if(index>-1) objects.splice(index,1);
+      if(transformControls.object===obj) transformControls.detach();
+      updateOutliner();
+    };
+    const btnCopy=document.createElement("button"); btnCopy.innerHTML='<i class="fas fa-copy"></i>'; btnCopy.onclick=()=>{const clone=obj.clone(); clone.position.add(new THREE.Vector3(0.5,0,0)); scene.add(clone); objects.push(clone); updateOutliner();};
+
+    actionPanel.append(btnSel,btnCenter,btnRename,btnDel,btnCopy);
+    btnToggle.onclick=()=>{actionPanel.style.display=actionPanel.style.display==="flex"?"none":"flex"}
+
+    div.appendChild(nameSpan);
+    div.appendChild(btnToggle);
+    div.appendChild(actionPanel);
+    outliner.appendChild(div);
+  });
+}
+
+/* AGRUPAR OBJETOS */
+function checkGroupButton(){
+  const existing=document.getElementById("btnGroup");
+  if(selectedObjects.length>1 && !existing){
+    const btnGroup=document.createElement("button");
+    btnGroup.id="btnGroup"; btnGroup.innerText="Agrupar";
+    btnGroup.onclick=()=>{
+      const parent=new THREE.Object3D(); scene.add(parent);
+      selectedObjects.forEach(obj=>{parent.add(obj);});
+      selectedObjects=[parent];
+      updateOutliner(); btnGroup.remove();
+    };
+    outliner.appendChild(btnGroup);
+  }else if(selectedObjects.length<2 && existing){
+    existing.remove();
+  }
+}
+
+/* BOTONES TRANSFORM */
+document.getElementById("moveBtn").onclick=()=>transformControls.setMode("translate");
+document.getElementById("rotateBtn").onclick=()=>transformControls.setMode("rotate");
+document.getElementById("scaleBtn").onclick=()=>transformControls.setMode("scale");
+
+/* BOTON TOGGLE TOPBAR */
+document.getElementById("btnToggleTopBar").onclick=()=>{
+  const topBar=document.getElementById("topBar");
+  topBar.style.display=topBar.style.display==="flex"?"none":"flex";
+};
+
+// Función para aplicar JS al objeto seleccionado
+document.getElementById("applyScript").onclick = () => {
+    const obj = selectedObjects[0];
+    if (!obj) return;
+
+    try {
+        obj.userScript = new Function('obj', objScript.value);
+    } catch (err) {
+        console.error("Error en script:", err);
+    }
+};
+
+document.getElementById("clearScript").onclick = () => {
+    const obj = selectedObjects[0];
+    if (!obj) return;
+
+    obj.userScript = null;
+    objScript.value = "";
+};
+
+// Lista de ejemplos
+const jsExamples = [
+{
+name: "Multicolor",
+code: `obj.material.color.setHex(Math.random() * 0xffffff);`
+},
+{
+name: "Gira",
+code: `obj.rotation.y += 0.05;`
+},
+{
+name: "Glitch",
+code: `obj.position.x += (Math.random()-0.5)*0.1;
+obj.position.y += (Math.random()-0.5)*0.1;
+obj.position.z += (Math.random()-0.5)*0.1;`
+},
+{
+name: "Sube y baja",
+code: `obj.position.y = Math.sin(Date.now()*0.002) * 1;`
+},
+{
+name: "Pulsa escala",
+code: `obj.scale.setScalar(1 + Math.sin(Date.now()*0.005)*0.3);`
+}
+];
+
+// Ejecutar el script del objeto cada frame si existe
+function animateScripts(){
+    objects.forEach(obj=>{
+        if(obj.userScript){
+            try { obj.userScript(obj); }
+            catch(e){ console.error(e); }
+        }
+    });
+}
+
+const btnHelpScript = document.getElementById("btnHelpScript");
+btnHelpScript.onclick = () => {
+// Si ya existe, alternamos visibilidad
+/* PANEL FLOTANTE DE EJEMPLOS */
+const examplesPanel = document.createElement("div");
+examplesPanel.style.position = "fixed";
+examplesPanel.style.top = "60px";
+examplesPanel.style.right = "10px";
+examplesPanel.style.width = "300px";
+examplesPanel.style.height = "400px";
+examplesPanel.style.background = "#222";
+examplesPanel.style.border = "2px solid #333";
+examplesPanel.style.borderRadius = "8px";
+examplesPanel.style.zIndex = "50";
+examplesPanel.style.overflowY = "auto";
+examplesPanel.style.display = "none";
+examplesPanel.style.flexDirection = "column";
+examplesPanel.style.padding = "10px";
+examplesPanel.style.color = "white";
+
+// Cabecera con título y botón de cerrar
+const header = document.createElement("div");
+header.style.display = "flex";
+header.style.justifyContent = "space-between";
+header.style.alignItems = "center";
+const title = document.createElement("span");
+title.innerText = "Ejemplos JS";
+const closeBtn = document.createElement("button");
+closeBtn.innerText = "×";
+closeBtn.style.background = "#555";
+closeBtn.style.border = "none";
+closeBtn.style.color = "white";
+closeBtn.style.cursor = "pointer";
+closeBtn.style.borderRadius = "3px";
+closeBtn.onclick = () => examplesPanel.style.display = "none";
+
+header.appendChild(title);
+header.appendChild(closeBtn);
+examplesPanel.appendChild(header);
+document.body.appendChild(examplesPanel);
+
+
+// Generar botones de ejemplo
+jsExamples.forEach(ex => {
+const div = document.createElement("div");
+div.style.display = "flex";
+div.style.justifyContent = "space-between";
+div.style.alignItems = "center";
+div.style.marginBottom = "5px";
+
+
+const label = document.createElement("span");
+label.innerText = ex.name;
+
+const copyBtn = document.createElement("button");
+copyBtn.innerText = "Copiar";
+copyBtn.style.background = "#444";
+copyBtn.style.border = "none";
+copyBtn.style.color = "white";
+copyBtn.style.cursor = "pointer";
+copyBtn.style.borderRadius = "3px";
+copyBtn.onclick = () => {
+    navigator.clipboard.writeText(ex.code)
+        .catch(err => console.error("Error copiando al portapapeles:", err));
+};
+
+
+div.appendChild(label);
+div.appendChild(copyBtn);
+examplesPanel.appendChild(div);
+
+
+});
+
+// Botón ? para abrir panel de ejemplos
+document.getElementById("btnHelpScript").onclick = () => {
+examplesPanel.style.display = "flex";
+examplesPanel.style.flexDirection = "column";
+};
+
+
+jsExamples.forEach(ex => {
+    const div = document.createElement("div");
+    div.style.borderBottom = "1px solid #555";
+    div.style.padding = "2px 0";
+    div.style.display = "flex";
+    div.style.justifyContent = "space-between";
+    div.style.alignItems = "center";
+
+    const title = document.createElement("span");
+    title.innerText = ex.name;
+    title.style.fontWeight = "bold";
+
+    const btnCopy = document.createElement("button");
+    btnCopy.innerText = "Copiar";
+    btnCopy.style.background = "#444";
+    btnCopy.style.color = "white";
+    btnCopy.style.border = "none";
+    btnCopy.style.borderRadius = "3px";
+    btnCopy.style.padding = "2px 4px";
+    btnCopy.style.cursor = "pointer";
+    btnCopy.onclick = () => { 
+        navigator.clipboard.writeText(ex.code).then(()=>alert("Código copiado al portapapeles"));
+    };
+
+    div.appendChild(title);
+    div.appendChild(btnCopy);
+    
+});
+
+};
+const btnPlay = document.getElementById("btnPlay");
+// ==== JOYSTICK CORRECTO ====
+const joystick = document.getElementById("joystickContainer");
+const stick = document.getElementById("joystickThumb");
+document.getElementById("btnEdit").addEventListener("click", () => {
+    // Mostrar paneles
+    const panels = document.querySelectorAll("#topBar, #addMenu, #rightPanel, .transformBtnContainer, #outliner");
+    panels.forEach(p => p.style.display = "");
+
+    // Restaurar tamaño editor
+    updateRender();
+
+    // CAMBIAR A CAMARA DE EDITOR
+    currentCamera = camEditor;
+    orbitControls.enabled = true;
+    transformControls.enabled = true;
+
+    // Ocultar UI de jugador
+    joystickContainer.style.display = "none";
+    btnJump.style.display = "none";
+    btnRun.style.display = "none";
+});
+
+
+
+let startX = 0, startY = 0;
+
+
+
+joystick.addEventListener("pointerdown", e => {
+    dragging = true;
+    joyId = e.pointerId;
+    startX = e.clientX;
+    startY = e.clientY;
+});
+
+joystick.addEventListener("pointermove", e => {
+    if (!dragging || joyId !== e.pointerId) return;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    const max = 45;
+
+    const mx = Math.max(-max, Math.min(max, dx));
+    const my = Math.max(-max, Math.min(max, dy));
+
+    // Mover visualmente el stick
+    stick.style.transform = `translate(${mx}px, ${my}px)`;
+
+    // Normalizar input a rango -1 a 1
+    joystickInput.x = mx / max;
+    joystickInput.y = my / max;
+});
+
+joystick.addEventListener("pointerup", e => {
+    if (e.pointerId !== joyId) return;
+
+    dragging = false;
+    joyId = null;
+
+    // Reset visual
+    stick.style.transform = "translate(0px, 0px)";
+
+    // Reset movimiento
+    joystickInput.x = 0;
+    joystickInput.y = 0;
+});
+
+
+const btnJump = document.getElementById("btnJump");
+const btnRun = document.getElementById("btnRun");
+
+// Variable para cámara activa
+let currentCamera = camEditor;
+ // cámara de editor
+const cameraThird = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
+cameraThird.position.set(0,2,10);
+
+btnPlay.addEventListener("click", () => {
+updateSpawnPoint();
+placePlayerOnTerrain();
+
+player.rotation.set(0,0,0);
+yVelocity = 0;
+isJumping = true;
+isFalling = true;
+
+    const panels = document.querySelectorAll("#topBar, #addMenu, #rightPanel, .transformBtnContainer, #outliner");
+    panels.forEach(p => p.style.display = "none");
+
+  
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+
+    // CAMBIO A CAMARA DE JUEGO
+    currentCamera = camGame;
+    orbitControls.enabled = false;
+    transformControls.enabled = false;
+
+    // Mostrar joystick y botones de jugador
+    joystickContainer.style.display = "block";
+    btnJump.style.display = "block";
+    btnRun.style.display = "block";
+    btnEdit.style.display = "block";
+});
+
+// ================== JOYSTICK ==================
+
+
+
+joystick
+.addEventListener("pointerdown", e => {
+    dragging = true; joyId = e.pointerId; sx = e.clientX; sy = e.clientY;
+});
+joystick
+.addEventListener("pointermove", e => {
+    if(!dragging || e.pointerId !== joyId) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    const max = 45;
+    const mx = Math.max(-max, Math.min(max, dx));
+    const my = Math.max(-max, Math.min(max, dy));
+    stick.style.transform = `translate(${mx}px,${my}px)`;
+    joystickInput.x = mx / max;
+    joystickInput.y = my / max;
+});
+joystick
+.addEventListener("pointerup", e => {
+    if(e.pointerId === joyId){
+        dragging = false; joyId = null; joystickInput = {x:0,y:0};
+        stick.style.transform = "translate(0,0)";
+    }
+});
+
+
+
+
+btnJump.addEventListener("pointerdown", () => {
+    if(grounded() && !isJumping){
+        isJumping = true;
+        yVelocity = 12;
+        playAction(actionJump);
+    }
+});
+
+btnRun.addEventListener("pointerdown", () => { isRunning = true; });
+btnRun.addEventListener("pointerup", () => { isRunning = false; });
+let camYaw = 0;
+let camPitch = -0.4;
+let camDistance = 6;
+
+let camYawTarget = 0;
+let camPitchTarget = -0.4;
+let camDistanceTarget = 6;
+
+// ================== VARIABLES JUGADOR ==================
+let player = new THREE.Object3D();
+let mixer = null, model = null;
+let actionIdle = null, actionWalk = null, actionRun = null, actionJump = null, actionFall = null;
+let currentAction = null;
+
+let joystickInput = {x:0, y:0};
+let dragging = false, joyId = null, sx=0, sy=0;
+let speed = 4, turnSpeed = 8;
+const gravity = 2; // fuerza de gravedad, puedes ajustar según el juego
+
+let yVelocity = 0;
+let isJumping = false, isRunning = false, isFalling = false;
+
+const capsule = { radius:0.5, height:1.9 };
+ // simulación cápsula
+scene.add(player);
+// Posicionar jugador al spawn
+player.position.copy(spawnPoint);
+
+// Idle
+loader.load("models/Quieto.gltf", gltf=>{
+    model = gltf.scene;
+    model.traverse(o=>{ if(o.isMesh){ o.material.transparent=true; o.frustumCulled=false; } });
+    player.add(model);
+    mixer = new THREE.AnimationMixer(model);
+
+    actionIdle = mixer.clipAction(gltf.animations[0]);
+    actionIdle.loop = THREE.LoopRepeat;
+    actionIdle.play();
+    currentAction = actionIdle;
+
+    // Walk
+    loader.load("models/walk.gltf", g=>{ actionWalk = mixer.clipAction(g.animations[0]); actionWalk.loop=THREE.LoopRepeat; });
+    // Run
+    loader.load("models/run.gltf", g=>{ actionRun = mixer.clipAction(g.animations[0]); actionRun.loop=THREE.LoopRepeat; });
+    // Jump
+    loader.load("models/jump.gltf", g=>{ 
+        actionJump = mixer.clipAction(g.animations[0]); 
+        actionJump.loop=THREE.LoopOnce; 
+        actionJump.clampWhenFinished=true; 
+    });
+    // Fall
+    loader.load("models/fall.gltf", g=>{ actionFall = mixer.clipAction(g.animations[0]); actionFall.loop=THREE.LoopRepeat; });
+});
+function playAction(a){
+    if(!a || currentAction===a) return;
+    a.reset(); a.play();
+    if(currentAction) currentAction.crossFadeTo(a,0.3,false);
+    currentAction = a;
+}
+function grounded() {
+    const origin = player.position.clone();
+    origin.y += capsule.height / 2;
+
+    const ray = new THREE.Raycaster(origin, new THREE.Vector3(0, -1, 0), 0, capsule.height + 0.3);
+
+    // Objetos que tienen colisión
+    const colliders = objects.filter(o => o.userData.collision);
+
+    const hits = ray.intersectObjects(colliders, true);
+
+    return hits.length > 0 ? hits[0] : null;
+}
+
+joystick.addEventListener("pointerdown", e=>{ dragging=true; joyId=e.pointerId; sx=e.clientX; sy=e.clientY; });
+joystick.addEventListener("pointermove", e=>{
+    if(!dragging || e.pointerId!==joyId) return;
+    const dx = e.clientX - sx;
+    const dy = e.clientY - sy;
+    const max = 45;
+    const mx = Math.max(-max, Math.min(max, dx));
+    const my = Math.max(-max, Math.min(max, dy));
+    stick.style.transform = `translate(${mx}px,${my}px)`;
+    joystickInput.x = mx/max; joystickInput.y = my/max;
+});
+joystick.addEventListener("pointerup", e=>{ 
+    if(e.pointerId===joyId){ 
+        dragging=false; joyId=null; 
+        joystickInput={x:0,y:0}; stick.style.transform="translate(0,0)"; 
+    } 
+});
+function resolveCollisions() {
+
+    const playerBox = new THREE.Box3();
+
+    // Crear un Box3 alrededor del jugador (cápsula aproximada)
+    playerBox.setFromCenterAndSize(
+        new THREE.Vector3(
+            player.position.x,
+            player.position.y + capsule.height * 0.5,
+            player.position.z
+        ),
+        new THREE.Vector3(
+            capsule.radius * 2,
+            capsule.height,
+            capsule.radius * 2
+        )
+    );
+
+    // Revisamos todos los objetos con colisión
+    for (const obj of objects) {
+        if (!obj.userData.collision) continue;
+
+        const objBox = new THREE.Box3().setFromObject(obj);
+
+        if (playerBox.intersectsBox(objBox)) {
+
+            const overlap = new THREE.Vector3(
+                Math.min(objBox.max.x - playerBox.min.x, playerBox.max.x - objBox.min.x),
+                Math.min(objBox.max.y - playerBox.min.y, playerBox.max.y - objBox.min.y),
+                Math.min(objBox.max.z - playerBox.min.z, playerBox.max.z - objBox.min.z)
+            );
+
+            // Elegir el eje menor para empujar al jugador
+            if (overlap.x < overlap.y && overlap.x < overlap.z) {
+                player.position.x += (player.position.x > obj.position.x) ? overlap.x : -overlap.x;
+            }
+            else if (overlap.z < overlap.x && overlap.z < overlap.y) {
+                player.position.z += (player.position.z > obj.position.z) ? overlap.z : -overlap.z;
+            }
+            else {
+                player.position.y += (player.position.y > obj.position.y) ? overlap.y : -overlap.y;
+            }
+        }
+    }
+}
+function safeVerticalMove(newY) {
+    const start = new THREE.Vector3(player.position.x, player.position.y + capsule.height / 2, player.position.z);
+    const end = new THREE.Vector3(player.position.x, newY + capsule.height / 2, player.position.z);
+
+    const dir = end.clone().sub(start).normalize();
+    const dist = start.distanceTo(end);
+
+    const collisionRay = new THREE.Raycaster(start, dir, 0, dist);
+
+    const hits = collisionRay.intersectObjects(objects.filter(o => o.userData.collision), true);
+
+    if (hits.length > 0) {
+        // Pegamos al jugador justo encima del objeto para evitar atravesarlo
+        return hits[0].point.y - (capsule.height / 2);
+    }
+
+    return newY;
+}
+function sweepHorizontalCollision(nextPos) {
+    const origin = player.position.clone();
+    const direction = nextPos.clone().sub(origin);
+    const distance = direction.length();
+
+    if (distance < 0.0001) return nextPos;
+
+    direction.normalize();
+
+    const ray = new THREE.Raycaster(origin, direction, 0, distance + 0.2);
+
+    const hits = ray.intersectObjects(
+        objects.filter(o => o.userData.collision),
+        true
+    );
+
+    if (hits.length > 0) {
+        const hit = hits[0];
+        const safePos = origin.clone().add(direction.clone().multiplyScalar(hit.distance - 0.1));
+        return safePos;
+    }
+
+    return nextPos;
+}
+
+// === animate() completo (pegar en tu archivo, reemplaza el animate actual) ===
+const clock = new THREE.Clock(); // si ya lo tienes, mantenerlo (no duplicar)
+
+function animate(){
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    // Actualiza mixer (animaciones)
+    if (mixer) mixer.update(dt);
+
+    // ------------------------------------------------------
+    // 1) Detección de suelo
+    // ------------------------------------------------------
+    const onGround = typeof grounded === "function" ? grounded() : true;
+
+    // ------------------------------------------------------
+    // 2) Física vertical (salto / caída)
+    // ------------------------------------------------------
+    
+    // Al tocar suelo: reset
+    const groundHit = grounded();
+const platformRay = new THREE.Raycaster(
+    new THREE.Vector3(player.position.x, player.position.y + 0.2, player.position.z),
+    new THREE.Vector3(0, -1, 0),
+    0,
+    capsule.height + 2
+);
+
+const platformHit = platformRay.intersectObjects(
+    objects.filter(o => o.userData.collision),
+    true
+)[0];
+
+
+// === PLATAFORMA / CAÍDA ===
+if (platformHit && yVelocity <= 0) {
+
+    const groundY = platformHit.point.y;
+    const desiredY = groundY + capsule.radius - 0.5;
+
+    // 🔹 AQUÍ se define diff
+    const diff = desiredY - player.position.y;
+
+    // --- movimiento suave ——
+    if (Math.abs(diff) < 0.15) {
+        // seguimiento exacto cuando es pequeño
+        player.position.y = safeVerticalMove(player.position.y + diff);
+    }
+    else if (diff < -0.15) {
+        // plataforma bajó rápido → bajar suave
+        player.position.y = safeVerticalMove(player.position.y - 0.1);
+    }
+    else if (diff > 0.15) {
+        // plataforma subió rápido → subir suave
+        player.position.y = safeVerticalMove(player.position.y + 0.1);
+    }
+
+    yVelocity = 0;
+    isJumping = false;
+    isFalling = false;
+
+} else {
+
+    // caída normal
+    yVelocity -= 20 * dt;
+    player.position.y = safeVerticalMove(player.position.y + yVelocity * dt);
+
+    if (yVelocity < 0 && !isFalling) {
+        isFalling = true;
+        if (actionFall) playAction(actionFall);
+    }
+}
+
+// ---------- COLISIÓN HACIA ARRIBA ----------
+const headOrigin = player.position.clone();
+headOrigin.y += capsule.height / 2;
+
+const upRay = new THREE.Raycaster(
+    headOrigin,
+    new THREE.Vector3(0, 1, 0),
+    0,
+    0.4
+);
+
+const colliders = objects.filter(o => o.userData.collision);
+const upHits = upRay.intersectObjects(colliders, true);
+
+if (upHits.length > 0 && yVelocity > 0) {
+    // si estamos subiendo y golpeamos un "techo"
+    yVelocity = 0;
+}
+
+let lookId = null;
+let lx = 0, ly = 0;
+let lookSensitivity = 0.000003; // igual que index4.html
+
+canvas.addEventListener("touchstart", e => {
+
+    for (const t of e.changedTouches) {
+
+        // Ignorar si el toque está sobre el joystick
+        const target = document.elementFromPoint(t.clientX, t.clientY);
+        if (target === joystickContainer || joystickContainer.contains(target)) continue;
+
+        // Si no se está usando ya un dedo para mirar → usar este
+        if (lookId === null) {
+            lookId = t.identifier;
+            lx = t.clientX;
+            ly = t.clientY;
+            break;
+        }
+    }
+});
+
+canvas.addEventListener("touchmove", e => {
+
+    if (lookId === null) return;
+
+    for (const t of e.changedTouches) {
+
+        if (t.identifier === lookId) {
+
+            const dx = t.clientX - lx;
+            const dy = t.clientY - ly;
+
+            camYawTarget -= dx * lookSensitivity;
+            camPitchTarget -= dy * lookSensitivity;
+
+            // Misma limitación que en index4.html
+            camPitchTarget = Math.max(-1.2, Math.min(0.8, camPitchTarget));
+
+            lx = t.clientX;
+            ly = t.clientY;
+        }
+    }
+});
+
+canvas.addEventListener("touchend", e => {
+    for (const t of e.changedTouches) {
+        if (t.identifier === lookId) {
+            lookId = null;
+        }
+    }
+});
+let pinchDistance = 0;
+
+canvas.addEventListener("touchstart", e => {
+
+    // NO permitir zoom si joystick está siendo usado
+    if (dragging && joyId !== null) return;
+
+    if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchDistance = Math.sqrt(dx * dx + dy * dy);
+    }
+});
+
+canvas.addEventListener("touchmove", e => {
+
+    // NO permitir zoom si joystick se está moviendo
+    if (dragging && joyId !== null) return;
+
+    if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+
+        const newDist = Math.sqrt(dx * dx + dy * dy);
+
+        camDistanceTarget -= (newDist - pinchDistance) * 0.05;
+
+        // Límites EXACTOS como index4
+        camDistanceTarget = Math.max(3, Math.min(20, camDistanceTarget));
+
+        pinchDistance = newDist;
+    }
+});
+
+    // ------------------------------------------------------
+    // 3) Movimiento horizontal con joystick
+    // ------------------------------------------------------
+    // usa joystickInput.x / joystickInput.y (asegúrate que existan)
+    const moveX = (typeof joystickInput !== "undefined") ? joystickInput.x : 0;
+    const moveY = (typeof joystickInput !== "undefined") ? joystickInput.y : 0;
+
+    // velocidad según run
+    const speedNow = isRunning ? 10 : 4;
+
+    // dirección según cámara de juego (preferir currentCamera, si no usar cameraThird)
+    const cam = (typeof currentCamera !== "undefined" && currentCamera) ? currentCamera : (typeof cameraThird !== "undefined" ? cameraThird : null);
+    const camForward = new THREE.Vector3();
+    if (cam) {
+        cam.getWorldDirection(camForward);
+        camForward.y = 0;
+        camForward.normalize();
+    } else {
+        camForward.set(0,0,1); // fallback
+    }
+
+    const camRight = new THREE.Vector3();
+    camRight.crossVectors(new THREE.Vector3(0,1,0), camForward);
+
+    const moveVec = camForward.clone().multiplyScalar(-moveY).add(camRight.clone().multiplyScalar(-moveX));
+    const moveLen = moveVec.length();
+
+    if (moveLen > 0.01) {
+        // normalizar para no afectar rotación por la magnitud del vector
+        moveVec.normalize();
+
+        // rotación suave hacia la dirección del movimiento
+        const targetRot = Math.atan2(moveVec.x, moveVec.z);
+        // cálculo de la diferencia mínima (-PI..PI)
+        let diff = ((targetRot - player.rotation.y + Math.PI) % (Math.PI * 2)) - Math.PI;
+        // aplicar rotación interpolada (usa turnSpeed)
+        player.rotation.y += diff * dt * (typeof turnSpeed !== "undefined" ? turnSpeed : 8);
+
+        // desplazar jugador (multiplicamos por speedNow * dt)
+        const nextPos = player.position.clone().add(moveVec.multiplyScalar(speedNow * dt));
+const safePos = sweepHorizontalCollision(nextPos);
+player.position.copy(safePos);
+resolveCollisions();
+
+        // Animación apropiada (si no está en salto/caída)
+        if (!isJumping && !isFalling) {
+            if (isRunning && actionRun) playAction(actionRun);
+            else if (actionWalk) playAction(actionWalk);
+        }
+    } else {
+        // Si no se mueve y no está saltando/caído, ir a idle
+        if (!isJumping && !isFalling && actionIdle) {
+            playAction(actionIdle);
+        }
+    }
+
+    // ------------------------------------------------------
+    // 4) Cámara siguiendo al jugador
+    // ------------------------------------------------------
+    // Usa currentCamera si existe (en tu test.html lo activas al pulsar Play)
+    if (currentCamera === camGame) {
+
+    camYaw += (camYawTarget - camYaw) * 0.1;
+    camPitch += (camPitchTarget - camPitch) * 0.1;
+    camDistance += (camDistanceTarget - camDistance) * 0.1;
+
+    const offset = new THREE.Vector3(0, 0, camDistance);
+    offset.applyEuler(new THREE.Euler(camPitch, camYaw, 0, "YXZ"));
+    offset.y += 1.0;
+
+    camGame.position.copy(player.position).add(offset);
+    camGame.lookAt(
+        player.position.x,
+        player.position.y + 1.2,
+        player.position.z
+    );
+}
+animateScripts()
+    // ------------------------------------------------------
+    // 5) Actualizaciones finales - controles y render
+    // ------------------------------------------------------
+    if (typeof orbitControls !== "undefined" && orbitControls) orbitControls.update();
+    runUserAnimate();
+
+    renderer.render(scene, currentCamera);
+}
+
+
+animate();
+/* EJEMPLO */
+addMesh("cube");
+</script>
+
+</body>
+</html>
